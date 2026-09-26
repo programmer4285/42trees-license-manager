@@ -34,7 +34,7 @@ export function newLicenseService(
         licenseHash,
       });
 
-      await repo.insertSeat(seat);
+      await repo.upsertSeat(seat);
 
       return tokenService.issueToken({
         productId: cmd.productId,

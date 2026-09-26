@@ -23,7 +23,7 @@ function rowToSeat(row: SeatRow): Seat {
 
 export function newD1LicenseRepo(d1: D1Database): LicenseRepo {
   return {
-    async insertSeat(seat: Seat): Promise<void> {
+    async upsertSeat(seat: Seat): Promise<void> {
       const result = await d1
         .prepare(
           `INSERT INTO seats (
@@ -46,20 +46,6 @@ export function newD1LicenseRepo(d1: D1Database): LicenseRepo {
           seat.createdAt.toISOString(),
           seat.lastSeenAt.toISOString(),
         )
-        .run();
-
-      // TODO: consider returning result.meta.changes
-    },
-
-    async updateSeat(seat: Seat): Promise<void> {
-      const result = await d1
-        .prepare(
-          `UPDATE seats
-          SET last_seen_at = ?1
-          WHERE license_hash = ?2
-            AND device_id = ?3`,
-        )
-        .bind(seat.lastSeenAt.toISOString(), seat.licenseHash, seat.deviceId)
         .run();
 
       // TODO: consider returning result.meta.changes
