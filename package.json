@@ -1,0 +1,22 @@
+{
+  "name": "gumroad-license-manager",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy --minify",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "db:migrate": "wrangler d1 migrations apply license_mgmt --local",
+    "db:rm": "rm -rf .wrangler/state/v3/d1"
+  },
+  "dependencies": {
+    "hono": "^4.13.7",
+    "ky": "^2.1.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260906.1",
+    "@types/node": "^26.6.1",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.110.0"
+  }
+}
