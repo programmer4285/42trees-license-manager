@@ -6,6 +6,10 @@
 
   "vars": {},
 
+  "secrets": {
+    "required": ["JWT_PRIVATE_KEY"],
+  },
+
   "d1_databases": [
     {
       "binding": "DB",

@@ -10,7 +10,7 @@ export type GumroadResponse =
 
 export function newGumroadLicenseVerifier(): LicenseVerifier {
   const gumroad = ky.extend({
-    baseUrl: "https://api.gumroad.com/v2",
+    prefix: "https://api.gumroad.com/v2",
   });
 
   return {

@@ -6,9 +6,12 @@
     "deploy": "wrangler deploy --minify",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "db:migrate": "wrangler d1 migrations apply license_mgmt --local",
-    "db:rm": "rm -rf .wrangler/state/v3/d1"
+    "db:rm": "rm -rf .wrangler/state/v3/d1",
+    "test": "vitest run",
+    "keys:gen": "bash scripts/generate-jwt-key.sh"
   },
   "dependencies": {
+    "es-toolkit": "^1.52.0",
     "hono": "^4.13.7",
     "ky": "^2.1.0",
     "zod": "^4.6.5"
@@ -17,6 +20,7 @@
     "@cloudflare/workers-types": "^5.20260906.1",
     "@types/node": "^26.6.1",
     "typescript": "^7.0.2",
+    "vitest": "^5.0.2",
     "wrangler": "^4.110.0"
   }
 }

@@ -1,4 +1,5 @@
 import { LicenseVerifier } from "./license-verifier";
+import { TokenService } from "./token-service";
 import { LicenseRepo } from "../domain/license-repo";
 import { newSeat } from "../domain/seat";
 import { createHash } from "node:crypto";
@@ -12,9 +13,10 @@ export type ActivateCommand = {
 export function newLicenseService(
   repo: LicenseRepo,
   licenseVerifier: LicenseVerifier,
+  tokenService: TokenService,
 ) {
   return {
-    async activate(cmd: ActivateCommand) {
+    async activate(cmd: ActivateCommand): Promise<string> {
       const verified = await licenseVerifier.verify({
         licenseKey: cmd.licenseKey,
         productId: cmd.productId,
@@ -33,6 +35,11 @@ export function newLicenseService(
       });
 
       await repo.insertSeat(seat);
+
+      return tokenService.issueToken({
+        productId: cmd.productId,
+        deviceId: cmd.deviceId,
+      });
     },
   };
 }
