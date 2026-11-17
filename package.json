@@ -1,5 +1,5 @@
 {
-  "name": "gumroad-license-manager",
+  "name": "license-manager",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",

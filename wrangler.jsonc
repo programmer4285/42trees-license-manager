@@ -4,7 +4,10 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-09-07",
 
-  "vars": {},
+  "vars": {
+    "TOKEN_ISSUER": "42trees",
+    "TOKEN_TTL_SECONDS": "2592000",
+  },
 
   "secrets": {
     "required": ["JWT_PRIVATE_KEY"],

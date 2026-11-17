@@ -10,7 +10,7 @@ export type PublicJwk = {
   // the OKP curve the key is on
   crv: "Ed25519";
 
-  // the key itself. 32 bytes, b64 encoded.
+  // the public key. 32 bytes, b64 encoded.
   x: string;
 
   // the key id
