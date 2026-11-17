@@ -6,7 +6,7 @@ import {
   TokenService,
 } from "../application/token-service";
 
-const privateJwkSchema = z.preprocess(
+const jwkSchema = z.preprocess(
   (val: string) => {
     try {
       return JSON.parse(val);
@@ -17,7 +17,9 @@ const privateJwkSchema = z.preprocess(
   z.object({
     kty: z.literal("OKP"),
     crv: z.literal("Ed25519"),
+    // the public key
     x: z.string().min(1),
+    // the private key
     d: z.string().min(1),
     kid: z.string().min(1),
 
@@ -27,7 +29,7 @@ const privateJwkSchema = z.preprocess(
 );
 
 export type HonoTokenServiceOptions = {
-  privateJwk: string;
+  jwk: string;
   issuer: string;
   ttlSeconds: number;
 
@@ -39,22 +41,22 @@ export type HonoTokenServiceOptions = {
 export function newHonoTokenService(
   opts: HonoTokenServiceOptions,
 ): TokenService {
-  const parsed = privateJwkSchema.safeParse(opts.privateJwk);
+  const parsed = jwkSchema.safeParse(opts.jwk);
   if (!parsed.success) {
     // TODO: standardize error format
     throw new Error("private JWK is invalid, this is almost certainly a bug");
   }
 
-  const privateJwk = parsed.data;
+  const jwk = parsed.data;
 
   const now = opts.now ?? (() => new Date());
   const newId = opts.newId ?? (() => crypto.randomUUID());
 
   const publicJwk: PublicJwk = {
-    kty: privateJwk.kty,
-    crv: privateJwk.crv,
-    x: privateJwk.x,
-    kid: privateJwk.kid,
+    kty: jwk.kty,
+    crv: jwk.crv,
+    x: jwk.x,
+    kid: jwk.kid,
     alg: "EdDSA",
     use: "sig",
   };
@@ -72,7 +74,7 @@ export function newHonoTokenService(
           exp: iat + opts.ttlSeconds,
           jti: newId(),
         },
-        privateJwk,
+        jwk,
       );
     },
 

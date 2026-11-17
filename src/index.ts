@@ -4,24 +4,18 @@ import { newGumroadLicenseVerifier } from "./infra/gumroad-license-verifier";
 import { newD1LicenseRepo } from "./infra/d1-license-repo";
 import { newHonoTokenService } from "./infra/hono-token-service";
 import { newLicenseService } from "./application/license-service";
-import { assert } from "es-toolkit";
-
-const TTL_SECONDS = 2592000; // 30 days
 
 const app = new Hono<{ Bindings: CloudflareBindings }>();
 
 function initApp(c: Context<{ Bindings: CloudflareBindings }>): LicenseHandler {
-  const privateJwk = c.env.JWT_PRIVATE_KEY;
-
-  assert(
-    privateJwk !== undefined,
-    "JWT_PRIVATE_KEY is undefined, this is almost certainly a bug.",
-  );
+  const jwk = c.env.JWT_PRIVATE_KEY;
+  const issuer = c.env.TOKEN_ISSUER;
+  const ttlSeconds = Number(c.env.TOKEN_TTL_SECONDS);
 
   const tokenService = newHonoTokenService({
-    privateJwk,
-    issuer: "42trees",
-    ttlSeconds: TTL_SECONDS,
+    jwk,
+    issuer,
+    ttlSeconds,
   });
 
   const repo = newD1LicenseRepo(c.env.DB);
