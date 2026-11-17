@@ -1,5 +1,5 @@
 {
-  "name": "license-manager",
+  "name": "42trees-license-manager",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
