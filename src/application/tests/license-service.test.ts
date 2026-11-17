@@ -5,15 +5,14 @@ import { newHonoTokenService } from "../../infra/hono-token-service";
 import { newInMemoryLicenseRepo } from "../../infra/inmemory-license-repo";
 import { newNoopLicenseVerifier } from "../../infra/noop-license-verifier";
 
+const ISS = "unittest";
+
 async function generateKey(kid: string): Promise<string> {
   const pair = (await crypto.subtle.generateKey({ name: "Ed25519" }, true, [
     "sign",
     "verify",
   ])) as CryptoKeyPair;
-  const jwk = (await crypto.subtle.exportKey(
-    "jwk",
-    pair.privateKey,
-  )) as JsonWebKey;
+  const jwk = (await crypto.subtle.exportKey("jwk", pair.privateKey)) as JsonWebKey;
   return JSON.stringify({
     kty: jwk.kty,
     crv: jwk.crv,
@@ -25,54 +24,53 @@ async function generateKey(kid: string): Promise<string> {
 
 describe("license activation", () => {
   it("records a seat and returns a token that verifies against the published keys", async () => {
+    expect.assertions(7);
+
+    const kid = "kid-test";
+    const productId = crypto.randomUUID();
+    const deviceId = crypto.randomUUID();
+    const licenseKey = crypto.randomUUID();
+
     const licenseRepo = newInMemoryLicenseRepo();
-
     const licenseVerifier = newNoopLicenseVerifier();
-
     const tokenService = newHonoTokenService({
-      jwk: await generateKey("kid-activate"),
-      issuer: "license-manager",
+      jwk: await generateKey(kid),
+      issuer: ISS,
       ttlSeconds: 2592000,
     });
 
-    const service = newLicenseService(
-      licenseRepo,
-      licenseVerifier,
-      tokenService,
-    );
+    const service = newLicenseService(licenseRepo, licenseVerifier, tokenService);
 
     const token = await service.activate({
-      licenseKey: "LICENSE-KEY-123",
-      productId: "prod-1",
-      deviceId: "6f1c2a4e-8b3d-4c5a-9e7f-1a2b3c4d5e6f",
+      licenseKey,
+      productId,
+      deviceId,
     });
 
     expect(licenseRepo.seats).toHaveLength(1);
     expect(licenseRepo.seats[0]).toMatchObject({
-      productId: "prod-1",
-      deviceId: "6f1c2a4e-8b3d-4c5a-9e7f-1a2b3c4d5e6f",
+      productId,
+      deviceId,
     });
 
     const { header } = decode(token);
-    expect(header).toEqual({ alg: "EdDSA", typ: "JWT", kid: "kid-activate" });
+    expect(header).toEqual({ alg: "EdDSA", typ: "JWT", kid });
 
-    const publicJwk = tokenService
-      .getPublicKeys()
-      .find((k) => k.kid === header.kid)!;
+    const publicJwk = tokenService.getPublicKeys().find((k) => k.kid === header.kid)!;
     const payload = await verify(token, publicJwk, {
       alg: "EdDSA",
-      iss: "license-manager",
+      iss: ISS,
     });
 
     expect(payload).toMatchObject({
-      iss: "license-manager",
-      sub: "6f1c2a4e-8b3d-4c5a-9e7f-1a2b3c4d5e6f",
-      product_id: "prod-1",
+      iss: ISS,
+      sub: deviceId,
+      product_id: productId,
     });
     expect(payload.exp! - payload.iat!).toBe(2592000);
 
     const serialized = JSON.stringify(payload);
-    expect(serialized).not.toContain("LICENSE-KEY-123");
+    expect(serialized).not.toContain(licenseKey);
     expect(serialized).not.toContain(licenseRepo.seats[0].licenseHash);
   });
 });
