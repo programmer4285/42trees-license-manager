@@ -61,7 +61,8 @@ describe("license activation", () => {
       product_id: productId,
     });
     const { iat, exp } = payload;
-    assert(iat !== undefined && exp !== undefined, "token is missing iat or exp");
+    assert(iat !== undefined, "token is missing iat");
+    assert(exp !== undefined, "token is missing exp");
     expect(exp - iat).toBe(2592000);
 
     const serialized = JSON.stringify(payload);

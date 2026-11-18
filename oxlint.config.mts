@@ -7,6 +7,8 @@ export default defineConfig({
   rules: {
     curly: ["error", "all"],
     "typescript/no-non-null-assertion": "error",
+    "vitest/no-conditional-in-test": "error",
+    "vitest/expect-expect": "error",
     "no-restricted-imports": [
       "error",
       {

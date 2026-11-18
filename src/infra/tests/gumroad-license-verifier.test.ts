@@ -48,7 +48,9 @@ describe("gumroad license verifier", () => {
   it("accepts a dispute the seller won", async () => {
     const verifier = verifierRespondingWith(200, purchase({ disputed: true, dispute_won: true }));
 
-    expect((await verifier.verify(req)).ok).toBe(true);
+    const result = await verifier.verify(req);
+
+    expect(result).toEqual({ ok: true, value: undefined });
   });
 
   it.each([

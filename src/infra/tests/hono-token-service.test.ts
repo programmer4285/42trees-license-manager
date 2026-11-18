@@ -65,7 +65,8 @@ describe("newHonoTokenService", () => {
     const { payload } = decode(await service.issueToken(claims));
 
     const { iat, exp } = payload;
-    assert(iat !== undefined && exp !== undefined, "token is missing iat or exp");
+    assert(iat !== undefined, "token is missing iat");
+    assert(exp !== undefined, "token is missing exp");
     expect(exp - iat).toBe(2592000);
   });
 
@@ -141,6 +142,7 @@ describe("newHonoTokenService", () => {
       ttlSeconds: 60,
     });
     const [publicJwk] = service.getPublicKeys();
+
     const token = await service.issueToken(claims);
 
     expect(decode(token).header.kid).toBe("0FMmCKuln2bjoTtXzvBMhY4cUgkcW8tKZqXXjBsAtIc");
