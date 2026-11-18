@@ -1,7 +1,6 @@
 import { Context } from "hono";
 import z from "zod";
-import { LicenseService } from "../application/license-service";
-import { LicenseError } from "../application/license-verifier";
+import { ActivateError, LicenseService } from "../application/license-service";
 import { TokenService } from "../application/token-service";
 import { getErrorFields, type WideEventEnv } from "./wide-event";
 
@@ -11,9 +10,9 @@ const activateRequestSchema = z.object({
   deviceId: z.uuid(),
 });
 
-type ActivateError = LicenseError | { kind: "InvalidRequest" };
+type ActivateHandlerError = ActivateError | { kind: "InvalidRequest" };
 
-function errorResponse(c: Context, error: ActivateError): Response {
+function errorResponse(c: Context, error: ActivateHandlerError): Response {
   switch (error.kind) {
     case "InvalidRequest":
       return c.json({ error: error.kind }, 400);
@@ -21,6 +20,7 @@ function errorResponse(c: Context, error: ActivateError): Response {
       return c.json({ error: error.kind }, 404);
     case "LicenseRefunded":
     case "LicenseDisputed":
+    case "SeatLimitReached":
       return c.json({ error: error.kind }, 403);
     case "UpstreamUnavailable":
       return c.json({ error: error.kind }, 503);
@@ -55,6 +55,7 @@ export function newLicenseHandler(licenseService: LicenseService, tokenService: 
       }
 
       event.outcome = "LicenseActivated";
+      event.seat = result.value.seat;
 
       return c.json({ token: result.value.token }, 200);
     },

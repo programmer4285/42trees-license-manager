@@ -23,6 +23,7 @@ async function newApp(
     newInMemoryLicenseRepo(),
     newNoopLicenseVerifier(verdict),
     tokenService,
+    { seatLimit: 1 },
   );
   const handler = newLicenseHandler(service, tokenService);
   return new Hono().use(wideEventMiddleware(log)).post("/v1/activate", (c) => handler.activate(c));
@@ -76,6 +77,19 @@ describe("POST /v1/activate", () => {
     expect(await res.json()).toEqual({ error: error.kind });
   });
 
+  it("rejects a new device on a full license with 403 SeatLimitReached", async () => {
+    const app = await newApp();
+    const licenseKey = crypto.randomUUID();
+    const productId = crypto.randomUUID();
+    const bodyFor = (deviceId: string) => JSON.stringify({ licenseKey, productId, deviceId });
+    await activate(app, bodyFor(crypto.randomUUID()));
+
+    const res = await activate(app, bodyFor(crypto.randomUUID()));
+
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: "SeatLimitReached" });
+  });
+
   describe("wide event", () => {
     async function activateAndCapture(verdict: Result<void, LicenseError>, body = validBody) {
       const events: WideEvent[] = [];
@@ -94,6 +108,7 @@ describe("POST /v1/activate", () => {
           path: "/v1/activate",
           status: 200,
           outcome: "LicenseActivated",
+          seat: "created",
           productId,
           deviceId,
         }),

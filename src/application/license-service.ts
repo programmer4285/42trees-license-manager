@@ -1,5 +1,5 @@
 import { LicenseError, LicenseVerifier } from "./license-verifier";
-import { ok, type Result } from "../shared/result";
+import { err, ok, type Result } from "../shared/result";
 import { TokenService } from "./token-service";
 import { LicenseRepo } from "../domain/license-repo";
 import { newSeat } from "../domain/seat";
@@ -11,13 +11,20 @@ export type ActivateCommand = {
   deviceId: string;
 };
 
+export type ActivateError = LicenseError | { kind: "SeatLimitReached" };
+
+export type Activation = { token: string; seat: "created" | "refreshed" };
+
+export type LicenseServiceOptions = { seatLimit: number };
+
 export function newLicenseService(
   repo: LicenseRepo,
   licenseVerifier: LicenseVerifier,
   tokenService: TokenService,
+  opts: LicenseServiceOptions,
 ) {
   return {
-    async activate(cmd: ActivateCommand): Promise<Result<{ token: string }, LicenseError>> {
+    async activate(cmd: ActivateCommand): Promise<Result<Activation, ActivateError>> {
       const result = await licenseVerifier.verify({
         licenseKey: cmd.licenseKey,
         productId: cmd.productId,
@@ -34,14 +41,17 @@ export function newLicenseService(
         licenseHash,
       });
 
-      await repo.upsertSeat(seat);
+      const seatClaim = await repo.claimSeat(seat, opts.seatLimit);
+      if (seatClaim === "unavailable") {
+        return err({ kind: "SeatLimitReached" });
+      }
 
       const token = await tokenService.issueToken({
         productId: cmd.productId,
         deviceId: cmd.deviceId,
       });
 
-      return ok({ token });
+      return ok({ token, seat: seatClaim });
     },
   };
 }

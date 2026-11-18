@@ -27,7 +27,7 @@ describe("license activation", () => {
       ttlSeconds: 2592000,
     });
 
-    const service = newLicenseService(licenseRepo, licenseVerifier, tokenService);
+    const service = newLicenseService(licenseRepo, licenseVerifier, tokenService, { seatLimit: 1 });
 
     const result = await service.activate({
       licenseKey,
@@ -75,6 +75,7 @@ describe("license activation", () => {
       licenseRepo,
       newNoopLicenseVerifier(err({ kind: "LicenseRefunded" })),
       newHonoTokenService({ jwk: await generateKey("kid"), issuer: ISS, ttlSeconds: 60 }),
+      { seatLimit: 1 },
     );
 
     const result = await service.activate({
@@ -85,5 +86,45 @@ describe("license activation", () => {
 
     expect(result).toEqual({ ok: false, error: { kind: "LicenseRefunded" } });
     expect(licenseRepo.seats).toHaveLength(0);
+  });
+
+  describe("with a seat limit of 2", () => {
+    async function newService() {
+      const licenseRepo = newInMemoryLicenseRepo();
+      const service = newLicenseService(
+        licenseRepo,
+        newNoopLicenseVerifier(),
+        newHonoTokenService({ jwk: await generateKey("kid"), issuer: ISS, ttlSeconds: 60 }),
+        { seatLimit: 2 },
+      );
+      return { licenseRepo, service };
+    }
+
+    const licenseKey = crypto.randomUUID();
+    const productId = crypto.randomUUID();
+    const onDevice = (deviceId: string) => ({ licenseKey, productId, deviceId });
+
+    it("refuses a third device and records no seat for it", async () => {
+      const { licenseRepo, service } = await newService();
+      await service.activate(onDevice(crypto.randomUUID()));
+      await service.activate(onDevice(crypto.randomUUID()));
+
+      const result = await service.activate(onDevice(crypto.randomUUID()));
+
+      expect(result).toEqual({ ok: false, error: { kind: "SeatLimitReached" } });
+      expect(licenseRepo.seats).toHaveLength(2);
+    });
+
+    it("re-activates a known device on a full license", async () => {
+      const { service } = await newService();
+      const device = crypto.randomUUID();
+      const first = await service.activate(onDevice(device));
+      await service.activate(onDevice(crypto.randomUUID()));
+
+      const again = await service.activate(onDevice(device));
+
+      expect(first).toMatchObject({ ok: true, value: { seat: "created" } });
+      expect(again).toEqual({ ok: true, value: { token: expect.any(String), seat: "refreshed" } });
+    });
   });
 });

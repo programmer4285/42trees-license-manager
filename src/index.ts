@@ -13,9 +13,11 @@ const app = new Hono<AppEnv>();
 app.use(wideEventMiddleware(consoleLogger));
 
 function initApp(c: Context<AppEnv>): LicenseHandler {
+  // TODO: add env var validation
   const jwk = c.env.JWT_PRIVATE_KEY;
   const issuer = c.env.TOKEN_ISSUER;
   const ttlSeconds = Number(c.env.TOKEN_TTL_SECONDS);
+  const seatLimit = Number(c.env.SEAT_LIMIT);
 
   const tokenService = newHonoTokenService({
     jwk,
@@ -25,7 +27,7 @@ function initApp(c: Context<AppEnv>): LicenseHandler {
 
   const repo = newD1LicenseRepo(c.env.DB);
   const verifier = newGumroadLicenseVerifier();
-  const licenseService = newLicenseService(repo, verifier, tokenService);
+  const licenseService = newLicenseService(repo, verifier, tokenService, { seatLimit });
 
   return newLicenseHandler(licenseService, tokenService);
 }

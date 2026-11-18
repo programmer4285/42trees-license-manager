@@ -1,30 +1,9 @@
 import { LicenseRepo } from "../domain/license-repo";
-import { Seat } from "../domain/seat";
-
-type SeatRow = {
-  id: string;
-  device_id: string;
-  product_id: string;
-  license_hash: string;
-  created_at: string;
-  last_seen_at: string;
-};
-
-function rowToSeat(row: SeatRow): Seat {
-  return {
-    id: row.id,
-    deviceId: row.device_id,
-    productId: row.product_id,
-    licenseHash: row.license_hash,
-    createdAt: new Date(row.created_at),
-    lastSeenAt: new Date(row.last_seen_at),
-  };
-}
 
 export function newD1LicenseRepo(d1: D1Database): LicenseRepo {
   return {
-    async upsertSeat(seat: Seat): Promise<void> {
-      const _result = await d1
+    async claimSeat(seat, limit) {
+      const row = await d1
         .prepare(
           `INSERT INTO seats (
             id,
@@ -34,9 +13,12 @@ export function newD1LicenseRepo(d1: D1Database): LicenseRepo {
             created_at,
             last_seen_at
           )
-          VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+          SELECT ?1, ?2, ?3, ?4, ?5, ?6
+          WHERE (SELECT COUNT(*) FROM seats WHERE license_hash = ?3) < ?7
+            OR EXISTS (SELECT 1 FROM seats WHERE license_hash = ?3 AND device_id = ?4)
           ON CONFLICT (license_hash, device_id)
-          DO UPDATE SET last_seen_at = excluded.last_seen_at`,
+          DO UPDATE SET last_seen_at = excluded.last_seen_at
+          RETURNING id`,
         )
         .bind(
           seat.id,
@@ -45,30 +27,15 @@ export function newD1LicenseRepo(d1: D1Database): LicenseRepo {
           seat.deviceId,
           seat.createdAt.toISOString(),
           seat.lastSeenAt.toISOString(),
+          limit,
         )
-        .run();
+        .first<{ id: string }>();
 
-      // TODO: consider returning result.meta.changes
-    },
+      if (!row) {
+        return "unavailable";
+      }
 
-    async getSeats(licenseHash: string): Promise<Seat[]> {
-      const rows = await d1
-        .prepare(
-          `SELECT
-            id,
-            device_id,
-            product_id,
-            license_hash,
-            created_at,
-            last_seen_at
-          FROM seats
-          WHERE license_hash = ?1
-          ORDER BY created_at`,
-        )
-        .bind(licenseHash)
-        .all<SeatRow>();
-
-      return rows.results.map((row) => rowToSeat(row));
+      return row.id === seat.id ? "created" : "refreshed";
     },
   };
 }
