@@ -17,7 +17,7 @@ export function newLicenseService(
   tokenService: TokenService,
 ) {
   return {
-    async activate(cmd: ActivateCommand): Promise<Result<string, LicenseError>> {
+    async activate(cmd: ActivateCommand): Promise<Result<{ token: string }, LicenseError>> {
       const result = await licenseVerifier.verify({
         licenseKey: cmd.licenseKey,
         productId: cmd.productId,
@@ -41,7 +41,7 @@ export function newLicenseService(
         deviceId: cmd.deviceId,
       });
 
-      return ok(token);
+      return ok({ token });
     },
   };
 }

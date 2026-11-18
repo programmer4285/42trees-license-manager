@@ -56,7 +56,7 @@ export function newLicenseHandler(licenseService: LicenseService, tokenService: 
 
       event.outcome = "LicenseActivated";
 
-      return c.json({ token: result.value }, 200);
+      return c.json({ token: result.value.token }, 200);
     },
 
     async getPublicKeys(c: Context) {

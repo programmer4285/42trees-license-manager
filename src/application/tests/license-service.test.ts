@@ -37,7 +37,7 @@ describe("license activation", () => {
 
     assert(result.ok, `activation failed: ${result}`);
 
-    const token = result.value;
+    const { token } = result.value;
 
     expect(licenseRepo.seats).toHaveLength(1);
     expect(licenseRepo.seats[0]).toMatchObject({
