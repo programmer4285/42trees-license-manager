@@ -1,10 +1,6 @@
 import { sign } from "hono/jwt";
 import z from "zod";
-import {
-  PublicJwk,
-  TokenClaims,
-  TokenService,
-} from "../application/token-service";
+import { PublicJwk, TokenClaims, TokenService } from "../application/token-service";
 
 const jwkSchema = z.preprocess(
   (val: string) => {
@@ -38,9 +34,7 @@ export type HonoTokenServiceOptions = {
   newId?: () => string;
 };
 
-export function newHonoTokenService(
-  opts: HonoTokenServiceOptions,
-): TokenService {
+export function newHonoTokenService(opts: HonoTokenServiceOptions): TokenService {
   const parsed = jwkSchema.safeParse(opts.jwk);
   if (!parsed.success) {
     // TODO: standardize error format

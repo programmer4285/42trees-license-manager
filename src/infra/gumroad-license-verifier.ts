@@ -28,6 +28,8 @@ export function newGumroadLicenseVerifier(): LicenseVerifier {
         // TODO: check refunded/disputed
 
         return res.success;
+
+        // oxlint-disable no-useless-catch
       } catch (err) {
         // TODO: handle error
         throw err;

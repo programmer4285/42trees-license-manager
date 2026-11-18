@@ -120,7 +120,9 @@ describe("newHonoTokenService", () => {
     const [header, , signature] = token.split(".");
     const forged = b64url({ ...decode(token).payload, sub: "device-2" });
 
-    await expect(verify(`${header}.${forged}.${signature}`, publicJwk, "EdDSA")).rejects.toThrow();
+    await expect(verify(`${header}.${forged}.${signature}`, publicJwk, "EdDSA")).rejects.toThrow(
+      /signature mismatched/,
+    );
   });
 
   it("publishes only public key material", async () => {
