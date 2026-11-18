@@ -145,7 +145,7 @@ describe("newHonoTokenService", () => {
     });
   });
 
-  it("signs and verifies with a key from scripts/generate-jwt-key.sh", async () => {
+  it("signs and verifies with a key from scripts/generate-jwt-key.mts", async () => {
     const service = newHonoTokenService({
       jwk: TEST_PRIVATE_KEY,
       issuer: ISS,

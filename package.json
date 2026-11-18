@@ -8,7 +8,7 @@
     "db:migrate": "wrangler d1 migrations apply license_mgmt --local",
     "db:rm": "rm -rf .wrangler/state/v3/d1",
     "test": "vitest run",
-    "keys:gen": "bash scripts/generate-jwt-key.sh",
+    "keys:gen": "bun scripts/generate-jwt-key.mts",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",
