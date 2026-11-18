@@ -3,6 +3,7 @@ import z from "zod";
 import { LicenseService } from "../application/license-service";
 import { LicenseError } from "../application/license-verifier";
 import { TokenService } from "../application/token-service";
+import { getErrorFields, type WideEventEnv } from "./wide-event";
 
 const activateRequestSchema = z.object({
   licenseKey: z.string(),
@@ -22,24 +23,38 @@ function errorResponse(c: Context, error: ActivateError): Response {
     case "LicenseDisputed":
       return c.json({ error: error.kind }, 403);
     case "UpstreamUnavailable":
-      console.error("license provider unavailable", error.cause);
       return c.json({ error: error.kind }, 503);
   }
 }
 
 export function newLicenseHandler(licenseService: LicenseService, tokenService: TokenService) {
   return {
-    async activate(c: Context) {
+    async activate<E extends WideEventEnv>(c: Context<E>) {
+      const event = c.var.event;
+
+      // the body may not be valid json
       const body: unknown = await c.req.json().catch(() => undefined);
       const parsed = activateRequestSchema.safeParse(body);
       if (!parsed.success) {
+        event.outcome = "InvalidRequest";
         return errorResponse(c, { kind: "InvalidRequest" });
       }
 
+      event.productId = parsed.data.productId;
+      event.deviceId = parsed.data.deviceId;
+
       const result = await licenseService.activate(parsed.data);
       if (!result.ok) {
+        event.outcome = result.error.kind;
+
+        if (result.error.kind === "UpstreamUnavailable") {
+          event.error = getErrorFields(result.error.cause);
+        }
+
         return errorResponse(c, result.error);
       }
+
+      event.outcome = "LicenseActivated";
 
       return c.json({ token: result.value }, 200);
     },

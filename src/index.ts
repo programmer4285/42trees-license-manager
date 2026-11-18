@@ -4,10 +4,15 @@ import { newGumroadLicenseVerifier } from "./infra/gumroad-license-verifier";
 import { newD1LicenseRepo } from "./infra/d1-license-repo";
 import { newHonoTokenService } from "./infra/hono-token-service";
 import { newLicenseService } from "./application/license-service";
+import { consoleLogger, wideEventMiddleware, type WideEventEnv } from "./infra/wide-event";
 
-const app = new Hono<{ Bindings: CloudflareBindings }>();
+type AppEnv = { Bindings: CloudflareBindings } & WideEventEnv;
 
-function initApp(c: Context<{ Bindings: CloudflareBindings }>): LicenseHandler {
+const app = new Hono<AppEnv>();
+
+app.use(wideEventMiddleware(consoleLogger));
+
+function initApp(c: Context<AppEnv>): LicenseHandler {
   const jwk = c.env.JWT_PRIVATE_KEY;
   const issuer = c.env.TOKEN_ISSUER;
   const ttlSeconds = Number(c.env.TOKEN_TTL_SECONDS);
@@ -37,8 +42,7 @@ app.get("/v1/jwks", (c) => {
   return handler.getPublicKeys(c);
 });
 
-app.onError((error, c) => {
-  console.error(error);
+app.onError((_, c) => {
   return c.json({ error: "Internal Server Error" }, 500);
 });
 

@@ -8,8 +8,12 @@ import { newInMemoryLicenseRepo } from "../inmemory-license-repo";
 import { newLicenseHandler } from "../license-handler";
 import { newNoopLicenseVerifier } from "../noop-license-verifier";
 import { generateKey } from "../../test-utils/helpers";
+import { noopLogger, wideEventMiddleware, type Logger, type WideEvent } from "../wide-event";
 
-async function newApp(verdict: Result<void, LicenseError> = ok(undefined)) {
+async function newApp(
+  verdict: Result<void, LicenseError> = ok(undefined),
+  log: Logger = noopLogger,
+) {
   const tokenService = newHonoTokenService({
     jwk: await generateKey(),
     issuer: "unittest",
@@ -21,10 +25,10 @@ async function newApp(verdict: Result<void, LicenseError> = ok(undefined)) {
     tokenService,
   );
   const handler = newLicenseHandler(service, tokenService);
-  return new Hono().post("/v1/activate", (c) => handler.activate(c));
+  return new Hono().use(wideEventMiddleware(log)).post("/v1/activate", (c) => handler.activate(c));
 }
 
-function activate(app: Hono, body: string) {
+function activate(app: Pick<Hono, "request">, body: string) {
   return app.request("/v1/activate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -70,5 +74,51 @@ describe("POST /v1/activate", () => {
 
     expect(res.status).toBe(status);
     expect(await res.json()).toEqual({ error: error.kind });
+  });
+
+  describe("wide event", () => {
+    async function activateAndCapture(verdict: Result<void, LicenseError>, body = validBody) {
+      const events: WideEvent[] = [];
+      await activate(await newApp(verdict, (e) => events.push(e)), body);
+      return events;
+    }
+
+    it("emits one event describing a successful activation", async () => {
+      const { productId, deviceId, licenseKey } = JSON.parse(validBody);
+
+      const events = await activateAndCapture(ok(undefined));
+
+      expect(events).toEqual([
+        expect.objectContaining({
+          method: "POST",
+          path: "/v1/activate",
+          status: 200,
+          outcome: "LicenseActivated",
+          productId,
+          deviceId,
+        }),
+      ]);
+      expect(JSON.stringify(events)).not.toContain(licenseKey);
+    });
+
+    it("records the outcome of a rejected request", async () => {
+      const events = await activateAndCapture(ok(undefined), "{not json");
+
+      expect(events).toEqual([expect.objectContaining({ status: 400, outcome: "InvalidRequest" })]);
+    });
+
+    it("records the upstream cause when the license provider is down", async () => {
+      const events = await activateAndCapture(
+        err({ kind: "UpstreamUnavailable", cause: new Error("gumroad down") }),
+      );
+
+      expect(events).toEqual([
+        expect.objectContaining({
+          status: 503,
+          outcome: "UpstreamUnavailable",
+          error: { name: "Error", message: "gumroad down" },
+        }),
+      ]);
+    });
   });
 });
