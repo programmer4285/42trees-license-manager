@@ -17,16 +17,14 @@ export function newLicenseService(
 ) {
   return {
     async activate(cmd: ActivateCommand): Promise<string> {
-      const verified = await licenseVerifier.verify({
+      const _verified = await licenseVerifier.verify({
         licenseKey: cmd.licenseKey,
         productId: cmd.productId,
       });
 
       // TODO: throw error if verified = false
 
-      const licenseHash = createHash("sha256")
-        .update(cmd.licenseKey)
-        .digest("hex");
+      const licenseHash = createHash("sha256").update(cmd.licenseKey).digest("hex");
 
       const seat = newSeat({
         productId: cmd.productId,

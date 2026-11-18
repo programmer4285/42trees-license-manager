@@ -24,7 +24,7 @@ function rowToSeat(row: SeatRow): Seat {
 export function newD1LicenseRepo(d1: D1Database): LicenseRepo {
   return {
     async upsertSeat(seat: Seat): Promise<void> {
-      const result = await d1
+      const _result = await d1
         .prepare(
           `INSERT INTO seats (
             id,

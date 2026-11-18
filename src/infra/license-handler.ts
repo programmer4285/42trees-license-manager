@@ -9,10 +9,7 @@ const activateRequestSchema = z.object({
   deviceId: z.uuid(),
 });
 
-export function newLicenseHandler(
-  licenseService: LicenseService,
-  tokenService: TokenService,
-) {
+export function newLicenseHandler(licenseService: LicenseService, tokenService: TokenService) {
   return {
     async activate(c: Context) {
       const body = await c.req.json();
