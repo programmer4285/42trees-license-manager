@@ -1,6 +1,8 @@
+import { assert } from "es-toolkit";
 import { describe, expect, it } from "vitest";
 import { decode, verify } from "hono/jwt";
 import { newHonoTokenService } from "../hono-token-service";
+import { generateKey } from "../../test-utils/helpers";
 
 const TEST_PRIVATE_KEY = JSON.stringify({
   kty: "OKP",
@@ -11,21 +13,6 @@ const TEST_PRIVATE_KEY = JSON.stringify({
 });
 
 const ISS = "unittest";
-
-async function generateKey(kid = "test-kid"): Promise<string> {
-  const pair = (await crypto.subtle.generateKey({ name: "Ed25519" }, true, [
-    "sign",
-    "verify",
-  ])) as CryptoKeyPair;
-  const jwk = (await crypto.subtle.exportKey("jwk", pair.privateKey)) as JsonWebKey;
-  return JSON.stringify({
-    kty: jwk.kty,
-    crv: jwk.crv,
-    x: jwk.x,
-    d: jwk.d,
-    kid,
-  });
-}
 
 function b64url(value: unknown): string {
   return btoa(JSON.stringify(value)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -77,7 +64,9 @@ describe("newHonoTokenService", () => {
 
     const { payload } = decode(await service.issueToken(claims));
 
-    expect(payload.exp! - payload.iat!).toBe(2592000);
+    const { iat, exp } = payload;
+    assert(iat !== undefined && exp !== undefined, "token is missing iat or exp");
+    expect(exp - iat).toBe(2592000);
   });
 
   it("issues a distinct jti per token", async () => {

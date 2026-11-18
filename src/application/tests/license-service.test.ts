@@ -4,23 +4,11 @@ import { newLicenseService } from "../license-service";
 import { newHonoTokenService } from "../../infra/hono-token-service";
 import { newInMemoryLicenseRepo } from "../../infra/inmemory-license-repo";
 import { newNoopLicenseVerifier } from "../../infra/noop-license-verifier";
+import { err } from "../../shared/result";
+import { assert } from "es-toolkit";
+import { generateKey } from "../../test-utils/helpers";
 
 const ISS = "unittest";
-
-async function generateKey(kid: string): Promise<string> {
-  const pair = (await crypto.subtle.generateKey({ name: "Ed25519" }, true, [
-    "sign",
-    "verify",
-  ])) as CryptoKeyPair;
-  const jwk = (await crypto.subtle.exportKey("jwk", pair.privateKey)) as JsonWebKey;
-  return JSON.stringify({
-    kty: jwk.kty,
-    crv: jwk.crv,
-    x: jwk.x,
-    d: jwk.d,
-    kid,
-  });
-}
 
 describe("license activation", () => {
   it("records a seat and returns a token that verifies against the published keys", async () => {
@@ -41,11 +29,15 @@ describe("license activation", () => {
 
     const service = newLicenseService(licenseRepo, licenseVerifier, tokenService);
 
-    const token = await service.activate({
+    const result = await service.activate({
       licenseKey,
       productId,
       deviceId,
     });
+
+    assert(result.ok, `activation failed: ${result}`);
+
+    const token = result.value;
 
     expect(licenseRepo.seats).toHaveLength(1);
     expect(licenseRepo.seats[0]).toMatchObject({
@@ -56,7 +48,8 @@ describe("license activation", () => {
     const { header } = decode(token);
     expect(header).toEqual({ alg: "EdDSA", typ: "JWT", kid });
 
-    const publicJwk = tokenService.getPublicKeys().find((k) => k.kid === header.kid)!;
+    const publicJwk = tokenService.getPublicKeys().find((k) => k.kid === header.kid);
+    assert(publicJwk, "no published key matches the token's kid");
     const payload = await verify(token, publicJwk, {
       alg: "EdDSA",
       iss: ISS,
@@ -67,10 +60,30 @@ describe("license activation", () => {
       sub: deviceId,
       product_id: productId,
     });
-    expect(payload.exp! - payload.iat!).toBe(2592000);
+    const { iat, exp } = payload;
+    assert(iat !== undefined && exp !== undefined, "token is missing iat or exp");
+    expect(exp - iat).toBe(2592000);
 
     const serialized = JSON.stringify(payload);
     expect(serialized).not.toContain(licenseKey);
     expect(serialized).not.toContain(licenseRepo.seats[0].licenseHash);
+  });
+
+  it("returns the verifier's rejection and records no seat", async () => {
+    const licenseRepo = newInMemoryLicenseRepo();
+    const service = newLicenseService(
+      licenseRepo,
+      newNoopLicenseVerifier(err({ kind: "LicenseRefunded" })),
+      newHonoTokenService({ jwk: await generateKey("kid"), issuer: ISS, ttlSeconds: 60 }),
+    );
+
+    const result = await service.activate({
+      licenseKey: crypto.randomUUID(),
+      productId: crypto.randomUUID(),
+      deviceId: crypto.randomUUID(),
+    });
+
+    expect(result).toEqual({ ok: false, error: { kind: "LicenseRefunded" } });
+    expect(licenseRepo.seats).toHaveLength(0);
   });
 });

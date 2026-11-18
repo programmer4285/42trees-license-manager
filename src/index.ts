@@ -37,4 +37,9 @@ app.get("/v1/jwks", (c) => {
   return handler.getPublicKeys(c);
 });
 
+app.onError((error, c) => {
+  console.error(error);
+  return c.json({ error: "Internal Server Error" }, 500);
+});
+
 export default app;

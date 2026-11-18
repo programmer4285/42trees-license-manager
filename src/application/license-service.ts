@@ -1,4 +1,5 @@
-import { LicenseVerifier } from "./license-verifier";
+import { LicenseError, LicenseVerifier } from "./license-verifier";
+import { ok, type Result } from "../shared/result";
 import { TokenService } from "./token-service";
 import { LicenseRepo } from "../domain/license-repo";
 import { newSeat } from "../domain/seat";
@@ -16,13 +17,14 @@ export function newLicenseService(
   tokenService: TokenService,
 ) {
   return {
-    async activate(cmd: ActivateCommand): Promise<string> {
-      const _verified = await licenseVerifier.verify({
+    async activate(cmd: ActivateCommand): Promise<Result<string, LicenseError>> {
+      const result = await licenseVerifier.verify({
         licenseKey: cmd.licenseKey,
         productId: cmd.productId,
       });
-
-      // TODO: throw error if verified = false
+      if (!result.ok) {
+        return result;
+      }
 
       const licenseHash = createHash("sha256").update(cmd.licenseKey).digest("hex");
 
@@ -34,10 +36,12 @@ export function newLicenseService(
 
       await repo.upsertSeat(seat);
 
-      return tokenService.issueToken({
+      const token = await tokenService.issueToken({
         productId: cmd.productId,
         deviceId: cmd.deviceId,
       });
+
+      return ok(token);
     },
   };
 }

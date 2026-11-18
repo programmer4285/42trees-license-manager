@@ -37,8 +37,9 @@ export type HonoTokenServiceOptions = {
 export function newHonoTokenService(opts: HonoTokenServiceOptions): TokenService {
   const parsed = jwkSchema.safeParse(opts.jwk);
   if (!parsed.success) {
-    // TODO: standardize error format
-    throw new Error("private JWK is invalid, this is almost certainly a bug");
+    throw new Error("private JWK is invalid, this is almost certainly a bug", {
+      cause: parsed.error,
+    });
   }
 
   const jwk = parsed.data;

@@ -1,5 +1,6 @@
-import ky from "ky";
-import { LicenseVerifier } from "../application/license-verifier";
+import ky, { isHTTPError } from "ky";
+import type { LicenseVerifier } from "../application/license-verifier";
+import { err, ok } from "../shared/result";
 
 export type GumroadResponse =
   | {
@@ -8,9 +9,17 @@ export type GumroadResponse =
     }
   | { success: false; message: string };
 
-export function newGumroadLicenseVerifier(): LicenseVerifier {
+export type GumroadLicenseVerifierOptions = {
+  // inject fetch for testability purposes
+  fetch?: typeof fetch;
+};
+
+export function newGumroadLicenseVerifier(
+  opts: GumroadLicenseVerifierOptions = {},
+): LicenseVerifier {
   const gumroad = ky.extend({
     prefix: "https://api.gumroad.com/v2",
+    fetch: opts.fetch,
   });
 
   return {
@@ -25,14 +34,26 @@ export function newGumroadLicenseVerifier(): LicenseVerifier {
           })
           .json<GumroadResponse>();
 
-        // TODO: check refunded/disputed
+        if (!res.success) {
+          return err({ kind: "LicenseNotFound" });
+        }
 
-        return res.success;
+        if (res.purchase.refunded) {
+          return err({ kind: "LicenseRefunded" });
+        }
 
-        // oxlint-disable no-useless-catch
-      } catch (err) {
-        // TODO: handle error
-        throw err;
+        if (res.purchase.disputed && !res.purchase.dispute_won) {
+          return err({ kind: "LicenseDisputed" });
+        }
+
+        return ok(undefined);
+      } catch (cause) {
+        // Gumroad answers an unknown license with 404 { success: false }.
+        if (isHTTPError(cause) && cause.response.status === 404) {
+          return err({ kind: "LicenseNotFound" });
+        }
+
+        return err({ kind: "UpstreamUnavailable", cause });
       }
     },
   };
