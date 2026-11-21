@@ -22,6 +22,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.8.5",
     "@cloudflare/workers-types": "^5.20260906.1",
     "@types/node": "^26.6.1",
     "lefthook": "^2.2.2",

@@ -1,39 +1,13 @@
-import { readdir, readFile } from "node:fs/promises";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { getPlatformProxy } from "wrangler";
+import { env } from "cloudflare:workers";
+import { describe, expect, it } from "vitest";
 import type { LicenseRepo } from "../../domain/license-repo";
 import { newSeat } from "../../domain/seat";
 import { newD1LicenseRepo } from "../d1-license-repo";
 import { newInMemoryLicenseRepo } from "../inmemory-license-repo";
 
-let proxy: Awaited<ReturnType<typeof getPlatformProxy<CloudflareBindings>>>;
-
-// applies every migration in filename order. D1's exec() treats each line as a
-// statement, so statements are split on ";" and prepared one by one instead
-async function applyMigrations(db: D1Database) {
-  const files = (await readdir("migrations")).filter((f) => f.endsWith(".sql")).toSorted();
-  for (const file of files) {
-    const sql = await readFile(`migrations/${file}`, "utf8");
-    const statements = sql
-      .replaceAll(/--.*$/gm, "") // remove comments, if they contain ; the split won't work
-      .split(";")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    await db.batch(statements.map((s) => db.prepare(s)));
-  }
-}
-
-beforeAll(async () => {
-  // setup a real sqlite db for testing
-  proxy = await getPlatformProxy<CloudflareBindings>({ persist: false });
-  await applyMigrations(proxy.env.DB);
-}, 30_000);
-
-afterAll(() => proxy.dispose());
-
 const repos: [string, () => LicenseRepo][] = [
   ["in-memory", () => newInMemoryLicenseRepo()],
-  ["D1", () => newD1LicenseRepo(proxy.env.DB)],
+  ["D1", () => newD1LicenseRepo(env.DB)],
 ];
 
 describe.each(repos)("%s license repo", (_, newRepo) => {

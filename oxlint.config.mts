@@ -9,6 +9,7 @@ export default defineConfig({
     "typescript/no-non-null-assertion": "error",
     "vitest/no-conditional-in-test": "error",
     "vitest/expect-expect": "error",
+    "import/extensions": ["error", "never"],
     "no-restricted-imports": [
       "error",
       {
@@ -22,4 +23,11 @@ export default defineConfig({
       },
     ],
   },
+  overrides: [
+    {
+      // Vite's native loader requires file extension imports
+      files: ["vitest.config.ts"],
+      rules: { "import/extensions": "off" },
+    },
+  ],
 });
