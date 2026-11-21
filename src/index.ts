@@ -5,6 +5,7 @@ import { newD1LicenseRepo } from "./infra/d1-license-repo";
 import { newHonoTokenService } from "./infra/hono-token-service";
 import { newLicenseService } from "./application/license-service";
 import { consoleLogger, wideEventMiddleware, type WideEventEnv } from "./infra/wide-event";
+import { rateLimitMiddleware } from "./infra/rate-limit";
 
 type AppEnv = { Bindings: CloudflareBindings } & WideEventEnv;
 
@@ -32,7 +33,7 @@ function initApp(c: Context<AppEnv>): LicenseHandler {
   return newLicenseHandler(licenseService, tokenService);
 }
 
-app.post("/v1/activate", async (c) => {
+app.post("/v1/activate", rateLimitMiddleware(), async (c) => {
   const handler = initApp(c);
 
   return handler.activate(c);

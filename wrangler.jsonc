@@ -2,7 +2,9 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "42trees-license-manager",
   "main": "src/index.ts",
-  "compatibility_date": "2026-09-07",
+  "compatibility_date": "2026-11-18",
+  "compatibility_flags": ["nodejs_compat"],
+  "upload_source_maps": true,
 
   "vars": {
     "TOKEN_ISSUER": "42trees",
@@ -30,5 +32,15 @@
     },
   ],
 
-  "observability": { "enabled": true },
+  "observability": {
+    "enabled": true,
+    "logs": {
+      // Capture 100% of logs — lower this for high-traffic Workers
+      "head_sampling_rate": 1,
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.01, // Sample 1% of traces
+    },
+  },
 }
