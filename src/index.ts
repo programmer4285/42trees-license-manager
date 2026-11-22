@@ -1,4 +1,5 @@
 import { Hono, Context } from "hono";
+import z from "zod";
 import { LicenseHandler, newLicenseHandler } from "./infra/license-handler";
 import { newGumroadLicenseVerifier } from "./infra/gumroad-license-verifier";
 import { newD1LicenseRepo } from "./infra/d1-license-repo";
@@ -13,22 +14,27 @@ const app = new Hono<AppEnv>();
 
 app.use(wideEventMiddleware(consoleLogger));
 
+const configSchema = z.object({
+  JWT_PRIVATE_KEY: z.string().min(1),
+  TOKEN_ISSUER: z.string().min(1),
+  TOKEN_TTL_SECONDS: z.coerce.number().int().positive(),
+  SEAT_LIMIT: z.coerce.number().int().positive(),
+});
+
 function initApp(c: Context<AppEnv>): LicenseHandler {
-  // TODO: add env var validation
-  const jwk = c.env.JWT_PRIVATE_KEY;
-  const issuer = c.env.TOKEN_ISSUER;
-  const ttlSeconds = Number(c.env.TOKEN_TTL_SECONDS);
-  const seatLimit = Number(c.env.SEAT_LIMIT);
+  const config = configSchema.parse(c.env);
 
   const tokenService = newHonoTokenService({
-    jwk,
-    issuer,
-    ttlSeconds,
+    jwk: config.JWT_PRIVATE_KEY,
+    issuer: config.TOKEN_ISSUER,
+    ttlSeconds: config.TOKEN_TTL_SECONDS,
   });
 
   const repo = newD1LicenseRepo(c.env.DB);
   const verifier = newGumroadLicenseVerifier();
-  const licenseService = newLicenseService(repo, verifier, tokenService, { seatLimit });
+  const licenseService = newLicenseService(repo, verifier, tokenService, {
+    seatLimit: config.SEAT_LIMIT,
+  });
 
   return newLicenseHandler(licenseService, tokenService);
 }

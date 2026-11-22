@@ -1,5 +1,6 @@
-import { exports } from "cloudflare:workers";
+import { env, exports } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
+import app from "../index";
 
 // Tests should use unique IPs to avoid being rate limited
 function request(path: string, ip: string, init: RequestInit = {}) {
@@ -46,5 +47,31 @@ describe("worker entry point", () => {
     const res = await request("/v1/jwks", ip);
 
     expect(res.status).toBe(200);
+  });
+
+  describe("env var parsing", () => {
+    function jwksWith(overrides: Record<string, string>) {
+      return app.request("/v1/jwks", {}, { ...env, ...overrides });
+    }
+
+    it("serves requests when the config is valid", async () => {
+      const res = await jwksWith({});
+
+      expect(res.status).toBe(200);
+    });
+
+    it.each([
+      ["SEAT_LIMIT", "0"],
+      ["SEAT_LIMIT", "one"],
+      ["SEAT_LIMIT", "1.5"],
+      ["TOKEN_TTL_SECONDS", "abc"],
+      ["TOKEN_TTL_SECONDS", ""],
+      ["TOKEN_ISSUER", ""],
+    ])("answers 500 when %s is %j", async (name, value) => {
+      const res = await jwksWith({ [name]: value });
+
+      expect(res.status).toBe(500);
+      expect(await res.json()).toEqual({ error: "Internal Server Error" });
+    });
   });
 });
