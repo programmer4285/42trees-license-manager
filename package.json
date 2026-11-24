@@ -7,7 +7,7 @@
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "db:migrate": "wrangler d1 migrations apply license_mgmt --local",
     "db:rm": "rm -rf .wrangler/state/v3/d1",
-    "test": "vitest run",
+    "test": "vitest run --coverage",
     "keys:gen": "bun scripts/generate-jwt-key.mts",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
@@ -25,11 +25,12 @@
     "@cloudflare/vitest-plugin": "1.8.5",
     "@cloudflare/workers-types": "^5.20260906.1",
     "@types/node": "^26.6.1",
+    "@vitest/coverage-istanbul": "^5.1.1",
     "lefthook": "^2.2.2",
     "oxfmt": "^0.79.0",
     "oxlint": "^1.94.0",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.2",
+    "vitest": "^5.1.1",
     "wrangler": "^4.110.0"
   },
   "packageManager": "bun@1.4.4"
