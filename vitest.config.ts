@@ -5,25 +5,10 @@ import { generateKey } from "./src/test-utils/helpers.ts";
 // can optionally override with WRANGLER_LOG=debug bun run test
 process.env.WRANGLER_LOG ??= "warn";
 
-export default defineConfig(async () => ({
-  plugins: [
-    cloudflareTest({
-      wrangler: { configPath: "./wrangler.jsonc" },
-      remoteBindings: false,
-      miniflare: {
-        bindings: {
-          JWT_PRIVATE_KEY: await generateKey(),
-
-          // add a test-only binding for migrations so they can
-          // be applied in a setup file
-          TEST_MIGRATIONS: await readD1Migrations("./migrations"),
-        },
-      },
-    }),
-  ],
+// NOTE: projects inherit all root properties
+export default defineConfig({
   test: {
     fsModuleCache: true,
-    setupFiles: ["./src/test-utils/apply-migrations.ts"],
     silent: "passed-only", // only print logs for failing tests
     coverage: {
       provider: "istanbul",
@@ -31,5 +16,38 @@ export default defineConfig(async () => ({
       exclude: ["src/**/tests/**", "src/tests/**", "src/test-utils/**"],
       reporter: ["text", "html"],
     },
+    projects: [
+      {
+        plugins: [
+          cloudflareTest({
+            wrangler: { configPath: "./wrangler.jsonc" },
+            remoteBindings: false,
+            miniflare: {
+              bindings: {
+                JWT_PRIVATE_KEY: await generateKey(),
+
+                // add a test-only binding for migrations so they can
+                // be applied in a setup file
+                TEST_MIGRATIONS: await readD1Migrations("./migrations"),
+              },
+            },
+          }),
+        ],
+        test: {
+          name: "unit",
+          include: ["src/**/*.test.ts"],
+          setupFiles: ["./src/test-utils/apply-migrations.ts"],
+        },
+      },
+      {
+        test: {
+          name: "integration",
+          include: ["tests/**/*.test.ts"],
+          environment: "node",
+          testTimeout: 30_000,
+          hookTimeout: 60_000,
+        },
+      },
+    ],
   },
-}));
+});
