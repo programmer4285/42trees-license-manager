@@ -5,10 +5,11 @@
   "compatibility_date": "2026-11-18",
   "compatibility_flags": ["nodejs_compat"],
   "upload_source_maps": true,
+  "workers_dev": false,
 
   "vars": {
     "TOKEN_ISSUER": "42trees",
-    "TOKEN_TTL_SECONDS": "2592000",
+    "TOKEN_TTL_SECONDS": "2592000", // 30 Days
     "SEAT_LIMIT": "3",
   },
 
@@ -20,14 +21,21 @@
     {
       "binding": "DB",
       "database_name": "license_mgmt",
-      "database_id": "REPLACE_AFTER_WRANGLER_D1_CREATE",
+      "database_id": "REPLACE_AFTER_WRANGLER_D1_CREATE", // TODO
+    },
+  ],
+
+  "routes": [
+    {
+      "pattern": "api.42trees.com",
+      "custom_domain": true,
     },
   ],
 
   "ratelimits": [
     {
       "name": "LIMITER",
-      "namespace_id": "1001",
+      "namespace_id": "42",
       "simple": { "limit": 20, "period": 60 },
     },
   ],

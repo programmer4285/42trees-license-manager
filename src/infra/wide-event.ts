@@ -43,6 +43,7 @@ export function wideEventMiddleware(log: Logger): MiddlewareHandler<WideEventEnv
     event.status = c.res.status;
     event.durationMs = Date.now() - start;
 
+    // hono sets c.error if an exception is uncaught
     if (c.error) {
       event.error = getErrorFields(c.error);
     }

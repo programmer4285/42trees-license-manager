@@ -30,6 +30,7 @@ export function newGumroadLicenseVerifier(
             searchParams: {
               product_id: req.productId,
               license_key: req.licenseKey,
+              increment_uses_count: false,
             },
           })
           .json<GumroadResponse>();
