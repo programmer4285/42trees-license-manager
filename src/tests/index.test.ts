@@ -49,6 +49,44 @@ describe("worker entry point", () => {
     expect(res.status).toBe(200);
   });
 
+  describe("GET /v1/health", () => {
+    it("answers 200 when config is valid and D1 is reachable", async () => {
+      const res = await request("/v1/health", crypto.randomUUID());
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ status: "ok" });
+    });
+
+    it("is not rate limited for a client limited on /v1/activate", async () => {
+      const ip = crypto.randomUUID();
+      await exhaustActivateLimit(ip);
+
+      const res = await request("/v1/health", ip);
+
+      expect(res.status).toBe(200);
+    });
+
+    it("answers 503 when D1 query fails", async () => {
+      const brokenDb = {
+        prepare: () => ({
+          first: () => Promise.reject(new Error("D1_ERROR: network connection lost")),
+        }),
+      };
+
+      const res = await app.request("/v1/health", {}, { ...env, DB: brokenDb });
+
+      expect(res.status).toBe(503);
+      expect(await res.json()).toEqual({ status: "fail" });
+    });
+
+    it("answers 503 when config is invalid", async () => {
+      const res = await app.request("/v1/health", {}, { ...env, SEAT_LIMIT: "0" });
+
+      expect(res.status).toBe(503);
+      expect(await res.json()).toEqual({ status: "fail" });
+    });
+  });
+
   describe("env var parsing", () => {
     function jwksWith(overrides: Record<string, string>) {
       return app.request("/v1/jwks", {}, { ...env, ...overrides });

@@ -5,7 +5,12 @@ import { newGumroadLicenseVerifier } from "./infra/gumroad-license-verifier";
 import { newD1LicenseRepo } from "./infra/d1-license-repo";
 import { newHonoTokenService } from "./infra/hono-token-service";
 import { newLicenseService } from "./application/license-service";
-import { consoleLogger, wideEventMiddleware, type WideEventEnv } from "./infra/wide-event";
+import {
+  consoleLogger,
+  getErrorFields,
+  wideEventMiddleware,
+  type WideEventEnv,
+} from "./infra/wide-event";
 import { rateLimitMiddleware } from "./infra/rate-limit";
 
 type AppEnv = { Bindings: CloudflareBindings } & WideEventEnv;
@@ -49,6 +54,18 @@ app.get("/v1/jwks", (c) => {
   const handler = initApp(c);
 
   return handler.getPublicKeys(c);
+});
+
+app.get("/v1/health", async (c) => {
+  try {
+    initApp(c);
+    await c.env.DB.prepare("SELECT 1").first();
+  } catch (err) {
+    c.var.event.error = getErrorFields(err);
+    return c.json({ status: "fail" }, 503);
+  }
+
+  return c.json({ status: "ok" });
 });
 
 app.onError((_, c) => {
