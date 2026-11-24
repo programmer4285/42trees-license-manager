@@ -52,7 +52,7 @@ app.get("/v1/jwks", (c) => {
 });
 
 app.onError((_, c) => {
-  return c.json({ error: "Internal Server Error" }, 500);
+  return c.json({ error: "InternalServerError" }, 500);
 });
 
 export default app;

@@ -71,7 +71,7 @@ describe("worker entry point", () => {
       const res = await jwksWith({ [name]: value });
 
       expect(res.status).toBe(500);
-      expect(await res.json()).toEqual({ error: "Internal Server Error" });
+      expect(await res.json()).toEqual({ error: "InternalServerError" });
     });
   });
 });

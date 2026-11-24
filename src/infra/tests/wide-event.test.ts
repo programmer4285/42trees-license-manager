@@ -10,7 +10,7 @@ describe("wideEventMiddleware", () => {
       .get("/boom", () => {
         throw new TypeError("kaboom");
       })
-      .onError((_, c) => c.json({ error: "Internal Server Error" }, 500));
+      .onError((_, c) => c.json({ error: "InternalServerError" }, 500));
 
     await app.request("/boom");
 
